@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
 #
-import os
+# Script Name	: rename_jpg.py
+# Author: Raju Dantuluri
+# Created: 2016 03 15
+# Version: 0.3
+
+# Description: Rename jpg files to yyyymmddHHMMSS.jpg format.
+# Also find out the duplicates to remove
+
 import sys
+import os
 import collections
 import re
 import exifread
 import datetime
 import argparse
+import hashlib
+
 
 # get date and time from jpg file
 def getDateTime(fpath):
@@ -24,22 +34,35 @@ def getDateTime(fpath):
     return dt
 
 # Rename the jpg file to dateTime format (ex:yyyymmddhhmmss.jpg)
-def renameFile(topDir, delDups):
+def renameFile(topDir):
     for dirpath, dirnames, filenames in os.walk(topDir):
         for f in filenames:
             origFile = os.path.join(dirpath,f)
             if (f.lower().endswith(".jpg")):
                 datetimeJpg = getDateTime(origFile)
+                if datetimeJpg is None:
+                    print("%s failed to extract dateTime" % (origFile))
+                    continue
                 newFile = os.path.join(dirpath,datetimeJpg)
                 if not os.path.exists(newFile):
-                    print("doent exists %s %s" % (origFile, newFile))
+                    # newFile does not exist, safe to rename
                     os.rename(origFile, newFile)
-                elif origFile != newFile and os.path.exists(newFile):
-                    if delDups == "Yes":
-                        os.remove(origFile)
-                        print("%s is a duplicate TOBE DELETED" % (origFile))
-                    else:
-                        print("%s is a duplicate of %s" % (origFile, newFile))
+
+# Delete duplicate files using md5 checksum
+def deleteDups(topDir, delDups):
+    md5hash = {}
+    for dirpath, dirnames, filenames in os.walk(topDir):
+        for f in filenames:
+            origFile = os.path.join(dirpath,f)
+            if (f.lower().endswith(".jpg")):
+                filehash = hashlib.md5(open(origFile,'rb').read()).hexdigest()
+                if md5hash.get(filehash) is None:
+                    md5hash[filehash] = origFile
+                elif delDups == "Yes":
+                    os.remove(origFile)
+                    print("%s deleted a duplicate of %s" % (origFile,md5hash.get(filehash)))
+                else:
+                    print("%s is a duplicate of %s" % (origFile,md5hash.get(filehash)))
 
 def main():
     parser = argparse.ArgumentParser(description=
@@ -50,7 +73,8 @@ def main():
     parser.add_argument('--delete_duplicates', default="No", help=delHelpTxt)
     topDir = vars(parser.parse_args())['destination']
     delDups = vars(parser.parse_args())['delete_duplicates']
-    renameFile(topDir, delDups)
+    renameFile(topDir)
+    deleteDups(topDir, delDups)
 
 if __name__ == "__main__":
     main()
