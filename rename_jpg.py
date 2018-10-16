@@ -1,81 +1,81 @@
-#!/usr/bin/env python3
-#
-# Script Name	: rename_jpg.py
-# Author: Raju Dantuluri
-# Created: 2016 03 15
-# Version: 0.3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-# Description: Rename jpg files to yyyymmddHHMMSS.jpg format.
-# Also find out the duplicates to remove
+"""
+Problem:
+Often lot of times the jpeg files named by camera does not include the
+date and time of the picture taken. When collected lot of files, having
+date and time make it more valuable.
 
-import sys
-import os
-import collections
-import re
-import exifread
-import datetime
+Solution:
+Rename all the jpeg files based on the datetime of the file.
+It rename all the files, recurlivel in a given directory.
+ Default is the current directory.
+"""
+
+__author__ = "Raju Dantuluri"
+__license__ = "GPL"
+__version__ = "1.0.0"
+
+import pathlib
+import glob
+from PIL import Image
+from PIL.ExifTags import TAGS
 import argparse
-import hashlib
 
 
-# get date and time from jpg file
-def getDateTime(fpath):
-    dt = None
-    f = open(fpath, 'rb')
-    # Read Exif tags
-    tags = exifread.process_file(f)
-    for tag in tags.keys():
-        if tag not in ('JPEGThumbnail', 'TIFFThumbnail', 'Filename', 'EXIF MakerNote'):
-            if tag == "EXIF DateTimeOriginal":
-                d = datetime.datetime.strptime(str(tags[tag]), "%Y:%m:%d %H:%M:%S")
-                dt = '{:%Y%02m%02d%H%M%S}.jpg'.format(d)
-                if len(dt) != len("yyyymmddHHMMSS.jpg"):
-                    dt = None
-    return dt
+class Imageproc():
+    '''Image processing module.
 
-# Rename the jpg file to dateTime format (ex:yyyymmddhhmmss.jpg)
-def renameFile(topDir):
-    for dirpath, dirnames, filenames in os.walk(topDir):
-        for f in filenames:
-            origFile = os.path.join(dirpath,f)
-            if (f.lower().endswith(".jpg")):
-                datetimeJpg = getDateTime(origFile)
-                if datetimeJpg is None:
-                    print("%s failed to extract dateTime" % (origFile))
-                    continue
-                newFile = os.path.join(dirpath,datetimeJpg)
-                if not os.path.exists(newFile):
-                    # newFile does not exist, safe to rename
-                    os.rename(origFile, newFile)
+    To rename the jpeg files based on the datetime stamp found in exiv2 meta
+    data in the image file header.
+    '''
 
-# Delete duplicate files using md5 checksum
-def deleteDups(topDir, delDups):
-    md5hash = {}
-    for dirpath, dirnames, filenames in os.walk(topDir):
-        for f in filenames:
-            origFile = os.path.join(dirpath,f)
-            if (f.lower().endswith(".jpg")):
-                filehash = hashlib.md5(open(origFile,'rb').read()).hexdigest()
-                if md5hash.get(filehash) is None:
-                    md5hash[filehash] = origFile
-                elif delDups == "Yes":
-                    os.remove(origFile)
-                    print("%s deleted a duplicate of %s" % (origFile,md5hash.get(filehash)))
-                else:
-                    print("%s is a duplicate of %s" % (origFile,md5hash.get(filehash)))
+    def __init__(self, directory='.', verbose=False):
+        self.dir = directory
+        self.verbose = verbose
 
-def main():
-    parser = argparse.ArgumentParser(description=
-             'Rename jpg image files to dateTime.jpg format.')
-    dstHelpTxt="Destination directory to rename jpg files (default: current directory)"
-    delHelpTxt="Delete duplicate files, Yes to delete (default: No)"
-    parser.add_argument('--destination', default=".", help=dstHelpTxt)
-    parser.add_argument('--delete_duplicates', default="No", help=delHelpTxt)
-    topDir = vars(parser.parse_args())['destination']
-    delDups = vars(parser.parse_args())['delete_duplicates']
-    renameFile(topDir)
-    deleteDups(topDir, delDups)
+    def rename_jpg_datetime(self):
+        '''Find all the files recursively in the directory and rename
+        all the files based on the DateTimeDigitized found in the jpeg
+        file(s).
 
-if __name__ == "__main__":
-    main()
+        Arguments:
+        ---------
+        None.
 
+        Example:
+            IMG_001.JPG to be renamed 20180902293635.jpg
+        '''
+        types = ('*.jpg', '*.JPG', '*.jpeg', '*.JPEG')
+        for f in types:
+            filelist = list(glob.iglob(f'{self.dir}/**/{f}', recursive=True))
+            if len(filelist):
+                for file in filelist:
+                    src_file = pathlib.Path(file)
+                    img = Image.open(src_file)
+                    dt = img._getexif()[36868]
+                    img.close()
+                    del img
+                    dt = dt.replace(' ', '')
+                    dt = dt.replace(':', '')
+                    dest_file = src_file.parent / f'{dt}.jpg'
+                    if src_file == dest_file:
+                        continue
+                    if dest_file.exists():
+                        if self.verbose:
+                            print(
+                                f"skip - src:{src_file} dest:{dest_file} exists")
+                        continue
+                    src_file.rename(dest_file)
+                    print(f'{file} => {dest_file}')
+
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='Process image files.')
+    parser.add_argument('--directory', required=False, default='.')
+    parser.add_argument('--verbose', action="store_true", default=False)
+    args = parser.parse_args()
+    img = Imageproc(directory=args.directory, verbose=args.verbose)
+    img.rename_jpg_datetime()
