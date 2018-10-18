@@ -14,6 +14,7 @@ It rename all the files, recurlivel in a given directory.
 
 1.0.1 (2018-10-18 01:03:56 PDT)
 * Fixed an issue where the jpg files with missing exif data.
+* Fixed an issue where the jpg file size is zero.
 """
 
 __author__ = "Raju Dantuluri"
@@ -38,6 +39,7 @@ class Imageproc():
     def __init__(self, directory='.', verbose=False):
         self.dir = directory
         self.verbose = verbose
+        self._count = 0
 
     def rename_jpg_datetime(self):
         '''Find all the files recursively in the directory and rename
@@ -56,6 +58,9 @@ class Imageproc():
             filelist = list(glob.iglob(f'{self.dir}/**/{f}', recursive=True))
             for file in filelist:
                 src_file = pathlib.Path(file)
+                if src_file.stat().st_size == 0:
+                    print(f'{src_file}: empty file')
+                    continue
                 img = Image.open(src_file)
                 exif = img._getexif()
                 dt = exif[36868] if exif and 36868 in exif else None
@@ -75,7 +80,9 @@ class Imageproc():
                             f"skip - src:{src_file} dest:{dest_file} exists")
                     continue
                 src_file.rename(dest_file)
+                self._count += 1
                 print(f'{file} => {dest_file}')
+        print(f'Renamed files: {self._count}.')
 
 
 if __name__ == '__main__':
