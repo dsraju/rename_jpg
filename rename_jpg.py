@@ -22,11 +22,11 @@ __license__ = "GPL"
 __version__ = "1.0.1"
 
 import sys
+import argparse
 import pathlib
 import glob
 from PIL import Image
-from PIL.ExifTags import TAGS
-import argparse
+#from PIL.ExifTags import TAGS
 
 
 class Imageproc():
@@ -54,24 +54,23 @@ class Imageproc():
             IMG_001.JPG to be renamed 20180902293635.jpg
         '''
         types = ('*.jpg', '*.JPG', '*.jpeg', '*.JPEG')
-        for f in types:
-            filelist = list(glob.iglob(f'{self.dir}/**/{f}', recursive=True))
+        for ext in types:
+            filelist = list(glob.iglob(f'{self.dir}/**/{ext}', recursive=True))
             for file in filelist:
                 src_file = pathlib.Path(file)
                 if src_file.stat().st_size == 0:
                     print(f'{src_file}: empty file')
                     continue
-                img = Image.open(src_file)
-                exif = img._getexif()
-                dt = exif[36868] if exif and 36868 in exif else None
-                img.close()
-                del img
-                if dt is None:
+                datetm = None
+                with Image.open(src_file) as imgfd:
+                    exif = imgfd._getexif()
+                    datetm = exif[36868] if exif and 36868 in exif else None
+                if datetm is None:
                     print(f'{src_file}: found no exif data')
                     continue
-                dt = dt.replace(' ', '')
-                dt = dt.replace(':', '')
-                dest_file = src_file.parent / f'{dt}.jpg'
+                datetm = datetm.replace(' ', '')
+                datetm = datetm.replace(':', '')
+                dest_file = src_file.parent / f'{datetm}.jpg'
                 if src_file == dest_file:
                     continue
                 if dest_file.exists():
@@ -89,9 +88,9 @@ if __name__ == '__main__':
     if sys.version_info < (3, 0):
         print('{} not supported.'.format(sys.version))
         sys.exit()
-    parser = argparse.ArgumentParser(description='Process image files.')
-    parser.add_argument('--directory', required=False, default='.')
-    parser.add_argument('--verbose', action="store_true", default=False)
-    args = parser.parse_args()
-    img = Imageproc(directory=args.directory, verbose=args.verbose)
-    img.rename_jpg_datetime()
+    PARSER = argparse.ArgumentParser(description='Process image files.')
+    PARSER.add_argument('--directory', required=False, default='.')
+    PARSER.add_argument('--verbose', action="store_true", default=False)
+    ARGS = PARSER.parse_args()
+    IMG = Imageproc(directory=ARGS.directory, verbose=ARGS.verbose)
+    IMG.rename_jpg_datetime()
