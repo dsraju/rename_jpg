@@ -55,8 +55,7 @@ class Imageproc():
         '''
         types = ('*.jpg', '*.JPG', '*.jpeg', '*.JPEG')
         for ext in types:
-            filelist = list(glob.iglob(f'{self.dir}/**/{ext}', recursive=True))
-            for file in filelist:
+            for file in glob.iglob(f'{self.dir}/**/{ext}', recursive=True):
                 src_file = pathlib.Path(file)
                 if src_file.stat().st_size == 0:
                     print(f'{src_file}: empty file')
