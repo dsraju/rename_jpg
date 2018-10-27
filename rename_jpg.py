@@ -87,7 +87,7 @@ if __name__ == '__main__':
     if sys.version_info < (3, 0):
         print('{} not supported.'.format(sys.version))
         sys.exit()
-    PARSER = argparse.ArgumentParser(description='Process image files.')
+    PARSER = argparse.ArgumentParser(description='Process jpg image files.')
     PARSER.add_argument('--directory', required=False, default='.')
     PARSER.add_argument('--verbose', action="store_true", default=False)
     ARGS = PARSER.parse_args()
