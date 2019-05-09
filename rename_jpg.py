@@ -3,7 +3,7 @@
 
 """
 Problem:
-Often lot of times the jpeg files named by camera does not include the
+Often a lot of times the jpeg files named by camera does not include the
 date and time of the picture taken. When collected lot of files, having
 date and time make it more valuable.
 
